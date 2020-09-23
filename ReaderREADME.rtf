@@ -1,0 +1,146 @@
+{\rtf1\ansi\ansicpg1252\deff0\deflang1033{\fonttbl{\f0\fswiss\fcharset0 Arial;}}
+\viewkind4\uc1\pard\f0\fs20 This short document is only applicable to the PNG Reader. The Writer will have its own.\par
+\par
+The PNG project \ul is dependent upon\ulnone  a free VB-friendly version of the ZLIB.DLL. PNG data is encoded by that DLL and is required to uncompress, CRC check, and compress PNG data.  That DLL can be used as follows:\par
+\par
+ 1. Go to http://www.winimage.com/zLibDll/zlib123dll.zip\par
+ 2. Save the Zip file to your desktop & virus scan it for safety\par
+ 3. Open the zip file and extract to your desktop the file named: zlibwapi.dll\par
+ 4. Rename the zlibwapi.dll to zlibVB.dll\par
+    If you opted to use Folder Names while unzipping, the DLL will be in a\par
+    folder named Dll32, also on your desktop\par
+ 5. Move that file to your system folder. No DLL registration is needed\par
+ 6. Delete/clean up any desktop items that resulted from the previous 5 steps.\par
+ 7. After playing with project, delete the DLL from your system folder if desired\par
+ 8. If for some reason you cannot get to that website. Email me for a copy: LaVolpeVB@hotmail.com\par
+\par
+This class works basically by parsing the PNG embedded structure, converting PNG pixels to DIB bitmap (DIB) pixels and then displaying the DIB with the use of BitBlt or AlphaBlend APIs depending on various user-settings and/or whether or not the PNG contains transparency.  Why DIB? DIBs do produce one major problem: PNG is RGB and DIB is BGR. However, the AlphaBlend API requires a 32 bit per pixel DIB.  Additiionally, processing DIB bytes via direct memory access is far faster than using the SetPixel APIs.\par
+\par
+\b Progressive Display (Interlaced & Non-Interlaced).\b0   PNGs can be encoded with interlacing. This means that 7 reads of data are performed  before the entire PNG is processed. As each read (pass) is processed, it contains a reduced resemblence of the overall image and can be displayed as the overall image. The effect is an image being composed in front of your eyes and gives the viewer a visual progress meter vs an hourglass or progress bar. This project supports displaying Interlacing while simultaneously processing the image (progressive display). The only limitation is that the image will not be resized/stretched while it is being processed. There are various effects available and progressive display is optional.\par
+\tab 1. Fade-In. This is the only option available for Interlaced PNGs that contain transparency (fastest)\par
+\tab 2. Pixelated. This is the default option for Interlaced PNGs without transparency (not as fast). Fade-In is optional.\par
+\tab 3. Scanner. This is the only option for non-Interlaced images and is useful for displaying very large PNGs\par
+\tab 4. AutoMode. This option will choose one of the three above automatically, based on above critiera.\par
+\tab All above options can also be alpha blended simultaneously while being processed.\par
+\par
+\b About PNG's 256 levels of transparency\b0 .\par
+PNG can contain transparency three different ways.\par
+1. Each pixel can have an alpha channel. This is a single byte that ranges in value between 0 and 255 where zero is completely transparent and 255 is completely opaque/solid. These types of images are generally very large since they have to store an additional alpha value byte for each pixel.\par
+2. Simple transparency, where one color is designated as transparent. This is very similar in the way GIFs use transparency.\par
+3. Paletted images, less than 257 colors, can have a separate, related array that contains the alpha values for each palette index.\par
+\par
+\b PNG and DIB conversion/relationships\b0 .\par
+The DIB will be created based on the options/properties you set and the type of PNG being processed.\par
+\par
+a. PNG where \ul no transparency\ulnone  is used, \ul no progressive display\ulnone  is used, and \ul no alpha blending\ulnone  is used\par
+\tab 1. 1 bit per pixel (bpp) uses 1 byte to store 8 pixels. The DIB will also be 1bpp\par
+\tab 2. 2 bits per pixel uses 1 byte to store 4 pixels. The DIB will be 4bpp since APIs do not support 2bpp DIBs\par
+\tab 3. 4 bits per pixel uses 1 byte to store 2 pixels. The DIB will also be 4bpp\par
+\tab 4. 8 bits per pixel (paletted image/256 colors or less) uses 1 byte per pixel. The DIB will also be 8bpp\par
+\tab 5. 24 bits per pixel (true color) uses 3 bytes per pixel. The DIB will also be 24bpp\par
+\tab 6. A two-plane version of the above types. In these cases only one plane is used. DIB as described (1-5) above.\par
+\par
+b. PNG \ul with transparency\ulnone  and transparency is not user-prevented (i.e., transparency is processed)\par
+\tab All DIBs will be converted to 32bpp regardless of the PNG bit depth.  \par
+\tab This is because VB cannot natively display transparent DIBs, without intermediate APIs like AlphaBlend.\par
+\par
+c. PNG with transparency and \ul transparency is user-prevented\ulnone  (i.e., transparent pixels are replaced with a solid color)\par
+\tab All DIBs will be converted to 24bpp regardless of the PNG bit depth\par
+\tab Note that this "destroys" any transparency information since non-32bpp DIBs can't have alpha information\par
+\par
+d. All PNGs where user has \ul opted to always produce a 32bpp DIB\ulnone , then the DIB will be 32bpp\par
+\par
+e. When \ul using progressive display\ulnone  with the PNG. See above section regarding Progressive Display\par
+\tab 1. Fade-In option will always produce a 32bpp DIB, required for transparency effects\par
+\tab 2. Pixelated option will produce a bitmap equal to the PNG bit depth, with exceptions noted in para A above.\par
+\tab 3. Scanner option will produce a bitmap equal to the PNG bit depth, with exceptions noted in para A above.\par
+\tab 4. If using progressive display and the PNG will also be simultaneously alpha blended into the target image, \par
+\tab\tab then the DIB produced is always 32bpp since AlphaBlend API requires 32bpp DIBs\par
+\par
+\b Saving a bitmap\b0 . At any point after the PNG has been processed and the DIB has been created, you can Paint the DIB into a picture box and use the SavePicture option. Alternately you can create your own routines to save the picture to file by individually writing all the pixel information. Each DIB is a DIB section where the memory address of the 1st pixel is provided by the class' Handle property. Now, keep in mind the conversion issues described above. If you wish to store the PNG as the smallest DIB size, do not use progressive display while loading the PNG.  This option will cause many PNG bit depths to be either 24bpp or 32bpp and for a 1bpp PNG, this becomes a relatively large file that doesn't need to be if stored at 1bpp.\par
+\par
+\par
+\b CLASS PROPERTIES, METHODS, and EVENTS.\par
+\par
+EVENTS \b0 (v = By Value, r = By Reference)\par
+\par
+\ul Events are optional\ulnone .  By declaring your stdPng class WithEvents, you will receive them, else you will not.\par
+Also note that you need only one stdPNG class declared WithEvents. When done processing the PNG, simply assign that stdPNG object to another stdPNG object (probably arrayed or not); i.e., Set myPNG(n) = myGlobalPNG where myGlobalPNG was the class that was declared WithEvents.\par
+\par
+1. ProgressiveDisplay.  This event is fired after the PNG image has been completely read and just before it is processed/converted.  This event allows you the opportunity to modify properties/options based on the PNG information. Setting the By Ref variables is mandatory if you wish to progressively display your image, otherwise, this is an informational event only. The following parameters are provided.\par
+\par
+\tab Width(v) is the PNG width\par
+\tab Height(v) is the PNG height\par
+\tab destinationDC(r). Set to a valid hDC if the PNG file is to be progressively displayed\par
+\tab destinationHwnd(r). Set to the hWnd for the hDC if the PNG file is to be progressively displayed\par
+\tab WinBkgColor(v) is the suggested DC background color reported by the PNG. A negative value indicates not provided.\par
+\tab AlphaPng(v) will be True if any transparencies are used in the PNG\par
+\tab X(r). Set to the hDC left postiion to begin progressively displaying PNG. Zero is default\par
+\tab Y(r). Set to the hDC top position to begin progressively displaying PNG. Zero is default\par
+\tab IsInterlaced(v) is True if the PNG is interlaced otherwise it is false\par
+\tab useProgression(v) is True if the PNG is not interlaced and due to its large size, progressive display is suggested\par
+\par
+\tab Note 1: To progressively display an image, both the hDC and hWnd must be non-zero.\par
+\tab Note 2: If the stdPNG ProgressiveDisplay property =  pngNeverProgressive then this event will never be fired.\par
+\par
+2. Progress.  This event is fired immediately after the PNG is read and during the processing of the PNG.\par
+\tab The only parameter for this event is By Value and will range between 0 and 100. You can use this event to display your own custom progress meter when progressive display is not in use. However, using a custom meter while also progressively displaying is not prohibited, but is unnecessary and adds more time to finish processing the PNG.\par
+\par
+\tab Note. Trying to access PNG properties or methods from within this event will fail. \par
+\tab\tab The properties and methods will be available after the LoadFile method returns.\par
+\par
+\b METHODS \b0 (m = mandatory, o = optional)\par
+\par
+1. LoadFile. This function will take the following parameters and create a DIB based off of the PNG file passed.\par
+\tab FileName(m). This is the full path and filename of the PNG file to be processed\par
+\tab ValidateAllData(o). When True (default), all PNG data is CRC checked to ensure no data corruption. \par
+\tab\tab When False, only critical data is CRC checked. Minimal time saved when value is False.\par
+\tab Make32Bit(o). When True, all PNGs will be converted to a 32bpp DIB, else converted as discussed above\par
+\tab AlphaBlendValue(o). The value if less than 255 (default) will cause a 32bpp DIB to be created.\par
+\tab\tab If value is less than 255, will simultaneously alpha blend an image when Progressive Display is used.\par
+\par
+2. Paint. This function is almost identical to the StretchBlt API and VB's PaintPicture method. \par
+The following parameters used:\par
+\par
+\tab hDC(m). The target hDC where the image will be painted\par
+\tab destX(m). The left position on the hDC to start painting the image\par
+\tab destY(m). The top position on the hDC to start painting the image\par
+\tab destCx(o). The total width of the destination image that will be painted over. Default is PNG image width\par
+\tab destCy(o). The total height of the destination image that will be painted over. Default is PNG image height \par
+\tab pngDC(o). A hDC where the PNG image can be temporarily placed into for drawing purposes\par
+\tab\tab Note: The stdPNG class can manage its own DC and if so, no need to pass a value\par
+\tab\tab\tab However, if the option to manage its own DC is removed, you must provide a valid hDC\par
+\tab pngX(o). The left position of the PNG image where painting will originate from. Default is zero\par
+\tab pngY(o). The top position of the PNG image where painting will originate from. Default is zero\par
+\tab pngCx(o). The total width  of the PNG portion that will be painted onto target. Default is PNG image width \par
+\tab pngCy(o). The total height of the PNG portion that will be painted onto target. Default is PNG image height\par
+\tab AlphaBlend(o). The value of opacity the painted PNG image will have over the target. Default is 255 (100% opaque)\par
+\tab\tab Note: If the processed PNG image did not produce a 32bpp image, then this parameter is ignored.\par
+\par
+\b PROPERTIES \b0 (r = Read, w = Write)\par
+\par
+1. AspectRatio(r). Returns pixel size or aspect ratio if provided. Not all PNGs are 1:1 and some many be 6:9, etc\par
+2. Bitcount_DIB(r). Returns the amount of DIB bits required to store one pixel, including alpha if applicable\par
+3. Bitcount_PNG(r). Returns the amount of PNG bits required to store one pixel, including alpha if applicable\par
+4. Chromacity(r). Returns information about the chromaticities if provided\par
+5. ColorType(r). Returns the PNG color type which is PNG specific and will be 0, 2, 3, 4, or 6.\par
+6. Comments(r). Returns any non-unicode comments/remarks embedded within the PNG if provided\par
+7. GammaCorrection(r). Returns the suggest gamma value for the image if provided\par
+8. Handle(r). Returns the DIB array memory pointer\par
+9. HasOwnDC(r/w). Option to allow stdPNG class to maintain a memory DC for the created DIB\par
+10. hDC(r). Returns the DC containing the DIB unless the management of a DC has been denied (see hasOwnDC)\par
+11. Height(r). Returns the height of the PNG and DIB\par
+12. IsInterlaced(r). Returns whether the original PNG was interlaced or not\par
+13. LastModified(r). Returns the date when the PNG image was last modified if provided (embedded in the PNG)\par
+14. Offsets(r). Returns printer or display offsets if provided\par
+15. Palette(r/w) Returns or sets the palette to be used when processing the PNG\par
+16. ProgressiveDisplay(r/w). Returns or sets the preferred progressive display options when progressive display is used\par
+17. ScanLineWidth(r). Returns the scan line width of the DIB. Useful if writing the DIB to a file or otherwise manipulating it.\par
+18. stdRGB(r). Returns the type of Standard RGB suggested to display the image. Possible values are 1, 2, 3, or 4\par
+19. TransparentStyle(r/w). Rturns or sets then meaning of transparent pixels within the PNG\par
+20. Width(r). Returns the width of the PNG and DIB\par
+21....  more to come as other PNG codes are understood\par
+\par
+\par
+}
+ 
